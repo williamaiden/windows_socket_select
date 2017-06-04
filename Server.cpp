@@ -16,6 +16,10 @@ Server::Server()
 	/// 创建socket   
 	//SOCKET socketListen;
 	_socketListen = socket(AF_INET, SOCK_STREAM, 0);
+	/*
+	批注1：
+	当socket第三个参数为0时，会自动选择第二个参数类型对应的默认协议.
+	*/
 	if (_socketListen == INVALID_SOCKET){
 		WSACleanup();
 		std::cout << "socket() error." << std::endl;
@@ -38,7 +42,7 @@ Server::Server()
 	}
 
 	/// 开启监听  
-	result = listen(_socketListen, 5);
+	result = listen(_socketListen, SOMAXCONN);
 	if (result == SOCKET_ERROR){
 		closesocket(_socketListen);
 		WSACleanup();
@@ -61,12 +65,20 @@ Server::~Server(){
 void Server::windows_socket_select(){
 	/// select模型   
 	fd_set allSockSet;
-	FD_ZERO(&allSockSet);///1
-	FD_SET(_socketListen, &allSockSet); ///2
+	FD_ZERO(&allSockSet);
+	/*
+	批注1：
+		FD_ZERO():清楚fd_set中所有内容.
+	*/
+	FD_SET(_socketListen, &allSockSet); 
+	/*
+	批注2：
+		FD_SET():把一个socket句柄加入fd_set中.
+	*/
 
 	while (true){
-		fd_set readSet;///1
-		FD_ZERO(&readSet);///2
+		fd_set readSet;
+		FD_ZERO(&readSet);
 		readSet = allSockSet;
 		/*
 		批注1：@William Aiden 2017-6-3
@@ -135,29 +147,24 @@ void Server::windows_socket_select(){
 			{
 				char bufRecv[100];
 				result = recv(socket, bufRecv, 100, 0);
-				if (result == SOCKET_ERROR)
-				{
+				if (result == SOCKET_ERROR){
 					DWORD err = WSAGetLastError();
-					if (err == WSAECONNRESET)       /// 客户端的socket没有被正常关闭,即没有调用closesocket  
-					{
+					if (err == WSAECONNRESET){
+						/// 客户端的socket没有被正常关闭,即没有调用closesocket  
 						std::cout << "客户端[" << ipAddress << ":" << ntohs(clientAddr.sin_port) << "]被强行关闭, ";
 					}
-					else
-					{
+					else{
 						std::cout << "recv() error，" << std::endl;
 					}
-
 					closesocket(socket);
 					FD_CLR(socket, &allSockSet);
-
 					std::cout << "目前客户端的数量为：" << allSockSet.fd_count - 1 << std::endl;
 					break;
 				}
-				else if (result == 0)               /// 客户端的socket调用closesocket正常关闭  
-				{
+				else if (result == 0) {
+					/// 客户端的socket调用closesocket正常关闭  
 					closesocket(socket);
 					FD_CLR(socket, &allSockSet);
-
 					std::cout << "客户端[" << ipAddress << ":" << ntohs(clientAddr.sin_port)
 						<< "]已经退出，目前客户端的数量为：" << allSockSet.fd_count - 1 << std::endl;
 					break;
@@ -169,13 +176,16 @@ void Server::windows_socket_select(){
 			}
 		}
 	}
-
+	/*
+	批注3：
+		关闭所有Socket
+	*/
 	for (u_int i = 0; i < allSockSet.fd_count; ++i)
 	{
 		SOCKET socket = allSockSet.fd_array[i];
 		closesocket(socket);
 	}
-
+	///卸载Socket套接字库
 	WSACleanup();
 }
 
