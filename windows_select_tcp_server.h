@@ -2,19 +2,17 @@
 
 #include <WS2tcpip.h>
 #include <WinSock2.H>  
-#include <iostream>  
 
 #pragma comment(lib, "ws2_32.lib")   
 
-class Server
+class windows_select_tcp_server
 {
 public:
-	Server();
-	~Server();
+	windows_select_tcp_server();
+	~windows_select_tcp_server();
 
 	void windows_socket_select();
 private:
-	SOCKET _socketListen;
-
+	SOCKET _tcp_socket_listen;
 };
 
